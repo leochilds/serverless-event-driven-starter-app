@@ -30,13 +30,10 @@ export class DataStack extends cdk.Stack {
       writeCapacity: 1,
       pointInTimeRecovery: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      tags: [
-        {
-          key: 'Environment',
-          value: environment,
-        },
-      ],
     });
+
+    // Add tags
+    cdk.Tags.of(this.table).add('Environment', environment);
 
     // Outputs
     new cdk.CfnOutput(this, 'TableName', {

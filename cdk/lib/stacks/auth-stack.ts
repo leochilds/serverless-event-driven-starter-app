@@ -15,7 +15,6 @@ interface AuthStackProps extends cdk.StackProps {
   environment: string;
   table: dynamodb.Table;
   apiDomainName: string;
-  certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
   allowedOrigin: string;
 }
@@ -24,7 +23,13 @@ export class AuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
-    const { environment, table, apiDomainName, certificate, hostedZone, allowedOrigin } = props;
+    const { environment, table, apiDomainName, hostedZone, allowedOrigin } = props;
+
+    // Create API certificate in the same region as API Gateway (required)
+    const apiCertificate = new acm.Certificate(this, 'ApiCertificate', {
+      domainName: apiDomainName,
+      validation: acm.CertificateValidation.fromDns(hostedZone),
+    });
 
     // Create JWT secret in Secrets Manager
     const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
@@ -106,7 +111,7 @@ export class AuthStack extends cdk.Stack {
     // Create custom domain for API
     const domainName = new apigatewayv2.DomainName(this, 'ApiDomainName', {
       domainName: apiDomainName,
-      certificate: certificate,
+      certificate: apiCertificate,
     });
 
     // Map custom domain to API

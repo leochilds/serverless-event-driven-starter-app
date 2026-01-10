@@ -35,6 +35,7 @@ const dnsStack = new DnsStack(app, 'DNSStack', {
   env: certEnvConfig,
   stackName: `${environment}-dns-stack`,
   description: 'DNS Stack with Route53 and ACM certificates',
+  crossRegionReferences: true,
   tags: {
     Environment: environment,
   },
@@ -58,13 +59,13 @@ const authStack = new AuthStack(app, 'AuthStack', {
   env: envConfig,
   stackName: `${environment}-auth-stack`,
   description: 'Auth Service Stack with Lambda functions and API Gateway',
+  crossRegionReferences: true,
   tags: {
     Environment: environment,
   },
   environment,
   table: dataStack.table,
   apiDomainName,
-  certificate: dnsStack.apiCertificate,
   hostedZone: dnsStack.hostedZone,
   allowedOrigin,
 });
@@ -77,6 +78,7 @@ const frontendStack = new FrontendStack(app, 'FrontendStack', {
   env: envConfig,
   stackName: `${environment}-frontend-stack`,
   description: 'Frontend Stack with S3 and CloudFront',
+  crossRegionReferences: true,
   tags: {
     Environment: environment,
   },
