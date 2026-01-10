@@ -1,17 +1,13 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { verifyToken } from '../utils/jwt';
 import { createGetHandler } from '../lib/lambda-factory';
 import { authEnvSchema, authenticatedGetEventSchema } from '../lib/schemas';
-
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
+import { createUserDbClient } from '../lib/db-client';
 
 /**
  * Get User Lambda handler
  * Retrieves user data (requires JWT authentication)
  * 
- * Uses functional composition with curried handler factory
+ * Uses functional composition with curried handler factory and shared DB client
  */
 export const handler = createGetHandler(authEnvSchema)(authenticatedGetEventSchema)(
   async (event, env) => {
@@ -29,16 +25,11 @@ export const handler = createGetHandler(authEnvSchema)(authenticatedGetEventSche
       };
     }
 
-    // Get user data from database
-    const getCommand = new GetCommand({
-      TableName: env.TABLE_NAME,
-      Key: {
-        pk: `USER#${decoded.username}`,
-        sk: 'PROFILE',
-      },
-    });
+    // Create user DB client for this table
+    const userDb = createUserDbClient(env.TABLE_NAME);
 
-    const result = await docClient.send(getCommand);
+    // Get user data from database
+    const result = await userDb.getUser(decoded.username);
 
     if (!result.Item) {
       return {

@@ -38,17 +38,14 @@ export const authenticatedGetEventSchema = z.object({
 });
 
 /**
- * Body schema for signup requests
+ * Combined body schema for authentication requests (signup and login)
+ * Both operations require the same credentials structure
  */
-export const signupBodySchema = z.object({
+export const authCredentialsBodySchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
 });
 
-/**
- * Body schema for login requests
- */
-export const loginBodySchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
-});
+// Legacy exports for backwards compatibility (if needed)
+export const signupBodySchema = authCredentialsBodySchema;
+export const loginBodySchema = authCredentialsBodySchema;
