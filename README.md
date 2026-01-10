@@ -137,7 +137,34 @@ This starter application demonstrates a modern serverless architecture with:
 
 ## 🚀 Quick Start
 
-### 1. Clone and Install
+### Automated Bootstrap (Recommended)
+
+The easiest way to get started is using the bootstrap script:
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd serverless-event-driven-starter-app
+
+# Run the bootstrap script with your domain
+./bootstrap.sh yourdomain.com
+```
+
+The script will automatically:
+- ✅ Validate prerequisites (AWS CLI, Node.js, CDK)
+- ✅ Configure the domain in CDK
+- ✅ Install all dependencies
+- ✅ Bootstrap CDK in both regions
+- ✅ Deploy all infrastructure stacks
+- ✅ Build and deploy the frontend
+
+**Note:** You must have a Route53 hosted zone for your domain already created.
+
+### Manual Setup
+
+If you prefer manual control, follow these steps:
+
+#### 1. Clone and Install
 
 ```bash
 git clone <your-repo-url>
@@ -145,7 +172,7 @@ cd serverless-event-driven-starter-app
 npm install
 ```
 
-### 2. Configure Your Domain
+#### 2. Configure Your Domain
 
 Update `cdk/cdk.json` with your domain:
 
@@ -158,14 +185,14 @@ Update `cdk/cdk.json` with your domain:
 }
 ```
 
-### 3. Deploy Infrastructure
+#### 3. Deploy Infrastructure
 
 ```bash
 cd cdk
 npm run deploy
 ```
 
-### 4. Build and Deploy Frontend
+#### 4. Build and Deploy Frontend
 
 ```bash
 cd ../frontend
@@ -182,7 +209,7 @@ DISTRIBUTION_ID=$(aws cloudformation describe-stacks --stack-name production-fro
 aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
 ```
 
-### 5. Test the Application
+#### 5. Test the Application
 
 Visit your domain (e.g., `https://yourdomain.com`) and test:
 - Sign up with a username and password
