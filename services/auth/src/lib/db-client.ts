@@ -1,6 +1,6 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, GetCommandOutput } from '@aws-sdk/lib-dynamodb';
+import { GetCommandOutput } from '@aws-sdk/lib-dynamodb';
 import { z, ZodSchema } from 'zod';
+import { getDocClient, GetCommand, PutCommand, withValidation } from '@shared/dynamodb-client';
 
 /**
  * User record structure in DynamoDB
@@ -21,20 +21,6 @@ export interface UserDbClient {
   getUser: (username: string) => Promise<GetCommandOutput>;
   putUser: (userData: Partial<UserRecord>) => Promise<void>;
   checkUserExists: (username: string) => Promise<boolean>;
-}
-
-/**
- * Create a DynamoDB document client
- * Singleton pattern to reuse the same client instance
- */
-let docClientInstance: DynamoDBDocumentClient | null = null;
-
-function getDocClient(): DynamoDBDocumentClient {
-  if (!docClientInstance) {
-    const client = new DynamoDBClient({});
-    docClientInstance = DynamoDBDocumentClient.from(client);
-  }
-  return docClientInstance;
 }
 
 /**

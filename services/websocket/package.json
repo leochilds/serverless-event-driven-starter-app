@@ -1,0 +1,24 @@
+{
+  "name": "@serverless-starter/websocket",
+  "version": "1.0.0",
+  "description": "WebSocket service for real-time notifications",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.511.0",
+    "@aws-sdk/client-dynamodb": "^3.511.0",
+    "@aws-sdk/lib-dynamodb": "^3.511.0",
+    "@aws-sdk/client-eventbridge": "^3.511.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.133",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

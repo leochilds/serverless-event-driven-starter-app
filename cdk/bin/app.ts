@@ -5,6 +5,9 @@ import { DnsStack } from '../lib/stacks/dns-stack';
 import { DataStack } from '../lib/stacks/data-stack';
 import { AuthStack } from '../lib/stacks/auth-stack';
 import { FrontendStack } from '../lib/stacks/frontend-stack';
+import { EventStack } from '../lib/stacks/event-stack';
+import { WebSocketStack } from '../lib/stacks/websocket-stack';
+import { NotesStack } from '../lib/stacks/notes-stack';
 
 const app = new cdk.App();
 
@@ -72,6 +75,51 @@ const authStack = new AuthStack(app, 'AuthStack', {
 
 authStack.addDependency(dataStack);
 authStack.addDependency(dnsStack);
+
+// Event Stack - EventBridge and SQS for event-driven architecture
+const eventStack = new EventStack(app, 'EventStack', {
+  env: envConfig,
+  stackName: `${environment}-event-stack`,
+  description: 'Event Stack with EventBridge and SQS',
+  tags: {
+    Environment: environment,
+  },
+  environment,
+});
+
+// WebSocket Stack - WebSocket API for real-time notifications
+const webSocketStack = new WebSocketStack(app, 'WebSocketStack', {
+  env: envConfig,
+  stackName: `${environment}-websocket-stack`,
+  description: 'WebSocket Stack for real-time notifications',
+  tags: {
+    Environment: environment,
+  },
+  environment,
+  eventBus: eventStack.eventBus,
+});
+
+webSocketStack.addDependency(eventStack);
+
+// Notes Stack - Notes service with event-driven handlers
+const notesStack = new NotesStack(app, 'NotesStack', {
+  env: envConfig,
+  stackName: `${environment}-notes-stack`,
+  description: 'Notes Stack with event-driven Lambda functions',
+  tags: {
+    Environment: environment,
+  },
+  environment,
+  table: dataStack.table,
+  eventBus: eventStack.eventBus,
+  noteProcessingQueue: eventStack.noteProcessingQueue,
+  httpApi: authStack.httpApi,
+  allowedOrigin,
+});
+
+notesStack.addDependency(dataStack);
+notesStack.addDependency(eventStack);
+notesStack.addDependency(authStack);
 
 // Frontend Stack - SvelteKit static site with CloudFront
 const frontendStack = new FrontendStack(app, 'FrontendStack', {

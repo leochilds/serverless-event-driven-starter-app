@@ -270,3 +270,157 @@ export function createGetHandler<TEnvSchema extends ZodSchema>(
     };
   };
 }
+
+/**
+ * Create a PUT HTTP API Lambda handler with proper currying
+ * Similar to POST but for update operations
+ */
+export function createPutHandler<TEnvSchema extends ZodSchema>(
+  envSchema: TEnvSchema
+) {
+  return <TEventSchema extends ZodSchema>(eventSchema: TEventSchema) => {
+    return <TBodySchema extends ZodSchema>(bodySchema: TBodySchema) => {
+      return (
+        handler: (
+          event: z.infer<TEventSchema>,
+          env: z.infer<TEnvSchema> & z.infer<typeof baseEnvSchema>,
+          body: z.infer<TBodySchema>
+        ) => Promise<HandlerResponse>
+      ) => {
+        return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+          try {
+            const combinedSchema = baseEnvSchema.and(envSchema);
+            let env: z.infer<typeof combinedSchema>;
+            try {
+              env = combinedSchema.parse(process.env);
+            } catch (error) {
+              if (error instanceof ZodError) {
+                console.error('Environment validation failed:', error.issues);
+                const fallbackHeaders = buildCorsHeaders('*', 'PUT,OPTIONS');
+                return createErrorResponse(
+                  500,
+                  'Server configuration error',
+                  fallbackHeaders,
+                  formatZodError(error).errors
+                );
+              }
+              throw error;
+            }
+
+            const corsHeaders = buildCorsHeaders(env.ALLOWED_ORIGIN, 'PUT,OPTIONS');
+
+            let validatedEvent: z.infer<TEventSchema>;
+            try {
+              validatedEvent = eventSchema.parse(event);
+            } catch (error) {
+              if (error instanceof ZodError) {
+                return createErrorResponse(
+                  400,
+                  'Invalid request',
+                  corsHeaders,
+                  formatZodError(error).errors
+                );
+              }
+              throw error;
+            }
+
+            if (!event.body) {
+              return createErrorResponse(400, 'Missing request body', corsHeaders);
+            }
+
+            let parsedBody: any;
+            try {
+              parsedBody = JSON.parse(event.body);
+            } catch {
+              return createErrorResponse(400, 'Invalid JSON in request body', corsHeaders);
+            }
+
+            let validatedBody: z.infer<TBodySchema>;
+            try {
+              validatedBody = bodySchema.parse(parsedBody);
+            } catch (error) {
+              if (error instanceof ZodError) {
+                return createErrorResponse(
+                  400,
+                  'Invalid request body',
+                  corsHeaders,
+                  formatZodError(error).errors
+                );
+              }
+              throw error;
+            }
+
+            const response = await handler(validatedEvent, env, validatedBody);
+            return createSuccessResponse(response, corsHeaders);
+          } catch (error) {
+            console.error('Handler error:', error);
+            const fallbackHeaders = buildCorsHeaders('*', 'PUT,OPTIONS');
+            return createErrorResponse(500, 'Internal server error', fallbackHeaders);
+          }
+        };
+      };
+    };
+  };
+}
+
+/**
+ * Create a DELETE HTTP API Lambda handler with proper currying
+ */
+export function createDeleteHandler<TEnvSchema extends ZodSchema>(
+  envSchema: TEnvSchema
+) {
+  return <TEventSchema extends ZodSchema>(eventSchema: TEventSchema) => {
+    return (
+      handler: (
+        event: z.infer<TEventSchema>,
+        env: z.infer<TEnvSchema> & z.infer<typeof baseEnvSchema>
+      ) => Promise<HandlerResponse>
+    ) => {
+      return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+        try {
+          const combinedSchema = baseEnvSchema.and(envSchema);
+          let env: z.infer<typeof combinedSchema>;
+          try {
+            env = combinedSchema.parse(process.env);
+          } catch (error) {
+            if (error instanceof ZodError) {
+              console.error('Environment validation failed:', error.issues);
+              const fallbackHeaders = buildCorsHeaders('*', 'DELETE,OPTIONS');
+              return createErrorResponse(
+                500,
+                'Server configuration error',
+                fallbackHeaders,
+                formatZodError(error).errors
+              );
+            }
+            throw error;
+          }
+
+          const corsHeaders = buildCorsHeaders(env.ALLOWED_ORIGIN, 'DELETE,OPTIONS');
+
+          let validatedEvent: z.infer<TEventSchema>;
+          try {
+            validatedEvent = eventSchema.parse(event);
+          } catch (error) {
+            if (error instanceof ZodError) {
+              return createErrorResponse(
+                400,
+                'Invalid request',
+                corsHeaders,
+                formatZodError(error).errors
+              );
+            }
+            throw error;
+          }
+
+          const response = await handler(validatedEvent, env);
+          return createSuccessResponse(response, corsHeaders);
+        } catch (error) {
+          console.error('Handler error:', error);
+          const fallbackHeaders = buildCorsHeaders('*', 'DELETE,OPTIONS');
+          return createErrorResponse(500, 'Internal server error', fallbackHeaders);
+        }
+      };
+    };
+  };
+}

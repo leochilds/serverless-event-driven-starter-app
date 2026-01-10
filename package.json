@@ -6,6 +6,8 @@
   "workspaces": [
     "cdk",
     "services/auth",
+    "services/notes",
+    "services/websocket",
     "frontend"
   ],
   "scripts": {
