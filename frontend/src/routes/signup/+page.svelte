@@ -30,7 +30,7 @@
       success = 'Account created successfully! You can now login.';
       username = '';
       password = '';
-    } catch (err: any) {
+    } catch (err) {
       error = err.message;
     } finally {
       loading = false;

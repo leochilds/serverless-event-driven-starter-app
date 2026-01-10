@@ -33,7 +33,7 @@
 
       // Redirect to dashboard
       goto('/dashboard');
-    } catch (err: any) {
+    } catch (err) {
       error = err.message;
     } finally {
       loading = false;
