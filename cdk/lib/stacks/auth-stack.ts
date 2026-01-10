@@ -5,33 +5,21 @@ import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 interface AuthStackProps extends cdk.StackProps {
   environment: string;
   table: dynamodb.Table;
-  apiDomainName: string;
-  hostedZone: route53.IHostedZone;
+  httpApi: apigatewayv2.HttpApi;
   allowedOrigin: string;
 }
 
 export class AuthStack extends cdk.Stack {
-  public readonly httpApi: apigatewayv2.HttpApi;
-
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
-    const { environment, table, apiDomainName, hostedZone, allowedOrigin } = props;
-
-    // Create API certificate in the same region as API Gateway (required)
-    const apiCertificate = new acm.Certificate(this, 'ApiCertificate', {
-      domainName: apiDomainName,
-      validation: acm.CertificateValidation.fromDns(hostedZone),
-    });
+    const { environment, table, httpApi, allowedOrigin } = props;
 
     // Create JWT secret in Secrets Manager
     const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
@@ -95,48 +83,8 @@ export class AuthStack extends cdk.Stack {
     jwtSecret.grantRead(loginFunction);
     jwtSecret.grantRead(getUserFunction);
 
-    // Create HTTP API
-    this.httpApi = new apigatewayv2.HttpApi(this, 'AuthApi', {
-      apiName: `${environment}-auth-api`,
-      description: 'Authentication API',
-      corsPreflight: {
-        allowOrigins: [allowedOrigin],
-        allowMethods: [
-          apigatewayv2.CorsHttpMethod.GET,
-          apigatewayv2.CorsHttpMethod.POST,
-          apigatewayv2.CorsHttpMethod.OPTIONS,
-        ],
-        allowHeaders: ['Content-Type', 'Authorization'],
-      },
-    });
-
-    // Create custom domain for API
-    const domainName = new apigatewayv2.DomainName(this, 'ApiDomainName', {
-      domainName: apiDomainName,
-      certificate: apiCertificate,
-    });
-
-    // Map custom domain to API
-    new apigatewayv2.ApiMapping(this, 'ApiMapping', {
-      api: this.httpApi,
-      domainName: domainName,
-      stage: this.httpApi.defaultStage,
-    });
-
-    // Create Route53 record for API
-    new route53.ARecord(this, 'ApiAliasRecord', {
-      zone: hostedZone,
-      recordName: apiDomainName,
-      target: route53.RecordTarget.fromAlias(
-        new route53Targets.ApiGatewayv2DomainProperties(
-          domainName.regionalDomainName,
-          domainName.regionalHostedZoneId
-        )
-      ),
-    });
-
-    // Add routes
-    this.httpApi.addRoutes({
+    // Add routes to shared HTTP API
+    httpApi.addRoutes({
       path: '/auth/signup',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -145,7 +93,7 @@ export class AuthStack extends cdk.Stack {
       ),
     });
 
-    this.httpApi.addRoutes({
+    httpApi.addRoutes({
       path: '/auth/login',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -154,7 +102,7 @@ export class AuthStack extends cdk.Stack {
       ),
     });
 
-    this.httpApi.addRoutes({
+    httpApi.addRoutes({
       path: '/auth/user',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -164,16 +112,6 @@ export class AuthStack extends cdk.Stack {
     });
 
     // Outputs
-    new cdk.CfnOutput(this, 'ApiUrl', {
-      value: this.httpApi.url!,
-      description: 'API Gateway URL',
-    });
-
-    new cdk.CfnOutput(this, 'ApiDomainUrl', {
-      value: `https://${apiDomainName}`,
-      description: 'API Custom Domain URL',
-    });
-
     new cdk.CfnOutput(this, 'JwtSecretArn', {
       value: jwtSecret.secretArn,
       description: 'JWT Secret ARN',

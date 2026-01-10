@@ -3,6 +3,7 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { DnsStack } from '../lib/stacks/dns-stack';
 import { DataStack } from '../lib/stacks/data-stack';
+import { ApiStack } from '../lib/stacks/api-stack';
 import { AuthStack } from '../lib/stacks/auth-stack';
 import { FrontendStack } from '../lib/stacks/frontend-stack';
 import { EventStack } from '../lib/stacks/event-stack';
@@ -57,24 +58,39 @@ const dataStack = new DataStack(app, 'DataStack', {
   environment,
 });
 
-// Auth Service Stack - Lambda functions and API Gateway
-const authStack = new AuthStack(app, 'AuthStack', {
+// API Stack - Shared HTTP API Gateway for all services
+const apiStack = new ApiStack(app, 'ApiStack', {
   env: envConfig,
-  stackName: `${environment}-auth-stack`,
-  description: 'Auth Service Stack with Lambda functions and API Gateway',
+  stackName: `${environment}-api-stack`,
+  description: 'API Stack with HTTP API Gateway',
   crossRegionReferences: true,
   tags: {
     Environment: environment,
   },
   environment,
-  table: dataStack.table,
   apiDomainName,
   hostedZone: dnsStack.hostedZone,
   allowedOrigin,
 });
 
-authStack.addDependency(dataStack);
-authStack.addDependency(dnsStack);
+apiStack.addDependency(dnsStack);
+
+// Auth Service Stack - Lambda functions and routes
+const authStack = new AuthStack(app, 'AuthStack', {
+  env: envConfig,
+  stackName: `${environment}-auth-stack`,
+  description: 'Auth Service Stack with Lambda functions',
+  tags: {
+    Environment: environment,
+  },
+  environment,
+  table: dataStack.table,
+  httpApi: apiStack.httpApi,
+  allowedOrigin,
+});
+
+// Dependencies are implicit through resource references
+// authStack depends on dataStack (via table) and apiStack (via httpApi)
 
 // Event Stack - EventBridge and SQS for event-driven architecture
 const eventStack = new EventStack(app, 'EventStack', {
@@ -113,13 +129,12 @@ const notesStack = new NotesStack(app, 'NotesStack', {
   table: dataStack.table,
   eventBus: eventStack.eventBus,
   noteProcessingQueue: eventStack.noteProcessingQueue,
-  httpApi: authStack.httpApi,
+  httpApi: apiStack.httpApi,
   allowedOrigin,
 });
 
-notesStack.addDependency(dataStack);
-notesStack.addDependency(eventStack);
-notesStack.addDependency(authStack);
+// Dependencies are implicit through resource references
+// notesStack depends on dataStack (via table), eventStack (via eventBus and queue), and apiStack (via httpApi)
 
 // Frontend Stack - SvelteKit static site with CloudFront
 const frontendStack = new FrontendStack(app, 'FrontendStack', {
