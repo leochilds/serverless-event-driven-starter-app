@@ -1,0 +1,25 @@
+{
+  "name": "serverless-event-driven-starter-app",
+  "version": "1.0.0",
+  "description": "Serverless event-driven starter application with AWS CDK, TypeScript, and SvelteKit",
+  "private": true,
+  "workspaces": [
+    "cdk",
+    "services/auth",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build": "npm run build --workspaces",
+    "deploy": "cd cdk && npm run deploy"
+  },
+  "keywords": [
+    "serverless",
+    "event-driven",
+    "aws-cdk",
+    "typescript",
+    "sveltekit"
+  ],
+  "author": "Leo Childs",
+  "license": "MIT"
+}

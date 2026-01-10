@@ -1,0 +1,102 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write   # Required for OIDC authentication
+  contents: read    # Required to checkout code
+
+jobs:
+  deploy:
+    name: Deploy Infrastructure and Frontend
+    runs-on: ubuntu-latest
+    environment: PRODUCTION
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: eu-west-2
+          role-session-name: GitHubActions-${{ github.run_id }}
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Deploy CDK Stacks
+        working-directory: ./cdk
+        run: |
+          echo "Deploying all CDK stacks..."
+          npm run deploy
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: eu-west-2
+      
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: |
+          echo "Building SvelteKit frontend..."
+          npm run build
+      
+      - name: Deploy Frontend to S3
+        run: |
+          echo "Fetching S3 bucket name from CloudFormation..."
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name production-frontend-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" \
+            --output text \
+            --region eu-west-2)
+          
+          if [ -z "$BUCKET_NAME" ]; then
+            echo "Error: Could not retrieve S3 bucket name"
+            exit 1
+          fi
+          
+          echo "Syncing files to s3://$BUCKET_NAME/"
+          aws s3 sync frontend/build/ "s3://$BUCKET_NAME/" --delete --region eu-west-2
+          
+          echo "Frontend deployed successfully to S3"
+      
+      - name: Invalidate CloudFront Cache
+        run: |
+          echo "Fetching CloudFront distribution ID..."
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name production-frontend-stack \
+            --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
+            --output text \
+            --region eu-west-2)
+          
+          if [ -z "$DISTRIBUTION_ID" ]; then
+            echo "Error: Could not retrieve CloudFront distribution ID"
+            exit 1
+          fi
+          
+          echo "Creating CloudFront cache invalidation..."
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          
+          echo "CloudFront cache invalidation created: $INVALIDATION_ID"
+      
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo ""
+          echo "📦 Release: ${{ github.event.release.tag_name }}"
+          echo "🌐 Frontend: https://$(aws cloudformation describe-stacks --stack-name production-frontend-stack --query "Stacks[0].Outputs[?OutputKey=='DistributionDomain'].OutputValue" --output text --region eu-west-2)"
+          echo "🔌 API: https://api.leochilds.uk"
+          echo ""
+          echo "Note: CloudFront changes may take 15-30 minutes to propagate globally."
