@@ -9,6 +9,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 const SECRET_ARN = process.env.SECRET_ARN!;
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN!;
 
 /**
  * Login Lambda handler
@@ -17,7 +18,7 @@ const SECRET_ARN = process.env.SECRET_ARN!;
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Access-Control-Allow-Methods': 'POST,OPTIONS',
   };

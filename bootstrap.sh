@@ -135,21 +135,22 @@ get_aws_region() {
 update_cdk_config() {
     local domain=$1
     local api_domain="api.$domain"
+    local frontend_url="https://$domain"
     
     print_step "Updating CDK configuration with domain: $domain"
     
     # Backup original cdk.json
     cp cdk/cdk.json cdk/cdk.json.backup
     
-    # Update domain names in cdk.json
+    # Update domain names and CORS origin in cdk.json
     cd cdk
     local temp_file=$(mktemp)
-    jq --arg domain "$domain" --arg apiDomain "$api_domain" \
-        '.context.domainName = $domain | .context.apiDomainName = $apiDomain' \
+    jq --arg domain "$domain" --arg apiDomain "$api_domain" --arg frontendUrl "$frontend_url" \
+        '.context.domainName = $domain | .context.apiDomainName = $apiDomain | .context.allowedOrigin = $frontendUrl' \
         cdk.json > "$temp_file" && mv "$temp_file" cdk.json
     cd ..
     
-    print_success "CDK configuration updated"
+    print_success "CDK configuration updated with CORS origin: $frontend_url"
 }
 
 ################################################################################

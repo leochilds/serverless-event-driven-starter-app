@@ -12,6 +12,7 @@ const app = new cdk.App();
 const environment = app.node.tryGetContext('environment') || 'production';
 const domainName = app.node.tryGetContext('domainName');
 const apiDomainName = app.node.tryGetContext('apiDomainName');
+const allowedOrigin = app.node.tryGetContext('allowedOrigin');
 const primaryRegion = app.node.tryGetContext('primaryRegion') || 'eu-west-2';
 const certificateRegion = app.node.tryGetContext('certificateRegion') || 'us-east-1';
 
@@ -65,6 +66,7 @@ const authStack = new AuthStack(app, 'AuthStack', {
   apiDomainName,
   certificate: dnsStack.apiCertificate,
   hostedZone: dnsStack.hostedZone,
+  allowedOrigin,
 });
 
 authStack.addDependency(dataStack);

@@ -17,13 +17,14 @@ interface AuthStackProps extends cdk.StackProps {
   apiDomainName: string;
   certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
+  allowedOrigin: string;
 }
 
 export class AuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
-    const { environment, table, apiDomainName, certificate, hostedZone } = props;
+    const { environment, table, apiDomainName, certificate, hostedZone, allowedOrigin } = props;
 
     // Create JWT secret in Secrets Manager
     const jwtSecret = new secretsmanager.Secret(this, 'JwtSecret', {
@@ -42,6 +43,7 @@ export class AuthStack extends cdk.Stack {
       TABLE_NAME: table.tableName,
       SECRET_ARN: jwtSecret.secretArn,
       ENVIRONMENT: environment,
+      ALLOWED_ORIGIN: allowedOrigin,
     };
 
     const lambdaProps = {
@@ -91,7 +93,7 @@ export class AuthStack extends cdk.Stack {
       apiName: `${environment}-auth-api`,
       description: 'Authentication API',
       corsPreflight: {
-        allowOrigins: ['*'],
+        allowOrigins: [allowedOrigin],
         allowMethods: [
           apigatewayv2.CorsHttpMethod.GET,
           apigatewayv2.CorsHttpMethod.POST,
