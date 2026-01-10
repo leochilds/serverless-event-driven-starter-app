@@ -1,7 +1,8 @@
 import { verifyPassword } from '../utils/crypto';
 import { generateToken } from '../utils/jwt';
 import { createAuthHandler } from '../lib/composition-examples';
-import { createUserDbClient } from '../lib/db-client';
+import { createUserDbClient, withValidation } from '../lib/db-client';
+import { userRecordSchema } from '../lib/schemas';
 
 /**
  * Login Lambda handler
@@ -12,13 +13,14 @@ import { createUserDbClient } from '../lib/db-client';
 export const handler = createAuthHandler(async (event, env, body) => {
   const { username, password } = body;
   
-  // Create user DB client for this table
-  const userDb = createUserDbClient(env.TABLE_NAME);
+  // Create user DB client with validation for this table
+  const baseUserDb = createUserDbClient(env.TABLE_NAME);
+  const userDb = withValidation(userRecordSchema, baseUserDb);
 
-  // Get user from database
-  const result = await userDb.getUser(username);
+  // Get validated user from database
+  const user = await userDb.getValidatedUser(username);
 
-  if (!result.Item) {
+  if (!user) {
     return {
       statusCode: 401,
       body: { message: 'Invalid username or password' },
@@ -26,7 +28,7 @@ export const handler = createAuthHandler(async (event, env, body) => {
   }
 
   // Verify password
-  const isValid = await verifyPassword(password, result.Item.passwordHash);
+  const isValid = await verifyPassword(password, user.passwordHash);
 
   if (!isValid) {
     return {

@@ -1,7 +1,7 @@
 import { verifyToken } from '../utils/jwt';
 import { createGetHandler } from '../lib/lambda-factory';
-import { authEnvSchema, authenticatedGetEventSchema } from '../lib/schemas';
-import { createUserDbClient } from '../lib/db-client';
+import { authEnvSchema, authenticatedGetEventSchema, userRecordSchema } from '../lib/schemas';
+import { createUserDbClient, withValidation } from '../lib/db-client';
 
 /**
  * Get User Lambda handler
@@ -25,13 +25,14 @@ export const handler = createGetHandler(authEnvSchema)(authenticatedGetEventSche
       };
     }
 
-    // Create user DB client for this table
-    const userDb = createUserDbClient(env.TABLE_NAME);
+    // Create user DB client with validation for this table
+    const baseUserDb = createUserDbClient(env.TABLE_NAME);
+    const userDb = withValidation(userRecordSchema, baseUserDb);
 
-    // Get user data from database
-    const result = await userDb.getUser(decoded.username);
+    // Get validated user data from database
+    const user = await userDb.getValidatedUser(decoded.username);
 
-    if (!result.Item) {
+    if (!user) {
       return {
         statusCode: 404,
         body: { message: 'User not found' },
@@ -39,7 +40,7 @@ export const handler = createGetHandler(authEnvSchema)(authenticatedGetEventSche
     }
 
     // Remove sensitive data
-    const { passwordHash, ...userData } = result.Item;
+    const { passwordHash, ...userData } = user;
 
     return {
       statusCode: 200,

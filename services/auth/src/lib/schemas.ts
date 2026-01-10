@@ -49,3 +49,15 @@ export const authCredentialsBodySchema = z.object({
 // Legacy exports for backwards compatibility (if needed)
 export const signupBodySchema = authCredentialsBodySchema;
 export const loginBodySchema = authCredentialsBodySchema;
+
+/**
+ * User record schema for database validation
+ * Validates the structure of user records retrieved from DynamoDB
+ */
+export const userRecordSchema = z.object({
+  pk: z.string(),
+  sk: z.string(),
+  username: z.string(),
+  passwordHash: z.string(),
+  createdAt: z.string(),
+});
