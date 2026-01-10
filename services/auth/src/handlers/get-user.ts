@@ -1,55 +1,37 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { verifyToken } from '../utils/jwt';
+import { createGetHandler } from '../lib/lambda-factory';
+import { authEnvSchema, authenticatedGetEventSchema } from '../lib/schemas';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
-const TABLE_NAME = process.env.TABLE_NAME!;
-const SECRET_ARN = process.env.SECRET_ARN!;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN!;
-
 /**
  * Get User Lambda handler
  * Retrieves user data (requires JWT authentication)
+ * 
+ * Uses functional composition with curried handler factory
  */
-export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,OPTIONS',
-  };
-
-  try {
+export const handler = createGetHandler(authEnvSchema)(authenticatedGetEventSchema)(
+  async (event, env) => {
     // Extract token from Authorization header
-    const authHeader = event.headers.Authorization || event.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ message: 'Missing or invalid authorization header' }),
-      };
-    }
-
+    const authHeader = event.headers.authorization;
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Verify token
-    const decoded = await verifyToken(token, SECRET_ARN);
+    const decoded = await verifyToken(token, env.SECRET_ARN);
 
     if (!decoded) {
       return {
         statusCode: 401,
-        headers,
-        body: JSON.stringify({ message: 'Invalid or expired token' }),
+        body: { message: 'Invalid or expired token' },
       };
     }
 
     // Get user data from database
     const getCommand = new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: env.TABLE_NAME,
       Key: {
         pk: `USER#${decoded.username}`,
         sk: 'PROFILE',
@@ -61,8 +43,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!result.Item) {
       return {
         statusCode: 404,
-        headers,
-        body: JSON.stringify({ message: 'User not found' }),
+        body: { message: 'User not found' },
       };
     }
 
@@ -71,15 +52,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify(userData),
-    };
-  } catch (error) {
-    console.error('Get user error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ message: 'Internal server error' }),
+      body: userData,
     };
   }
-}
+);

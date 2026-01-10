@@ -16,6 +16,7 @@
     "@aws-sdk/client-dynamodb": "^3.478.0",
     "@aws-sdk/client-secrets-manager": "^3.478.0",
     "@aws-sdk/lib-dynamodb": "^3.478.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^4.3.5"
   }
 }
