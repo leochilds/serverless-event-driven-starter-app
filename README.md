@@ -107,7 +107,7 @@ This starter application demonstrates a modern serverless architecture with:
 
 ### Backend
 - **Language**: TypeScript
-- **Runtime**: Node.js 20.x
+- **Runtime**: Node.js 22.x
 - **Compute**: AWS Lambda
 - **API**: API Gateway (HTTP API)
 - **Database**: DynamoDB
@@ -131,7 +131,7 @@ This starter application demonstrates a modern serverless architecture with:
 ## 📋 Prerequisites
 
 - **AWS Account** with CLI configured
-- **Node.js** v20 or later
+- **Node.js** v22 or later
 - **AWS CDK CLI** (`npm install -g aws-cdk`)
 - **Route53 Hosted Zone** for your domain
 

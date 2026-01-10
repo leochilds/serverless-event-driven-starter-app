@@ -9,7 +9,7 @@ This guide will walk you through deploying the serverless event-driven starter a
    aws configure
    ```
 
-2. **Node.js** (v20 or later)
+2. **Node.js** (v22 or later)
 3. **npm** (comes with Node.js)
 4. **AWS CDK CLI** installed globally
    ```bash

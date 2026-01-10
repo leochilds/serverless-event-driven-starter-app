@@ -45,7 +45,7 @@ export class AuthStack extends cdk.Stack {
     };
 
     const lambdaProps = {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),
       environment: lambdaEnvironment,
