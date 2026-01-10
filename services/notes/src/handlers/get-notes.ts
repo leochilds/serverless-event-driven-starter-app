@@ -1,87 +1,34 @@
-import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
-
-const dynamoClient = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(dynamoClient);
-
-const TABLE_NAME = process.env.TABLE_NAME!;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN!;
+import { createAuthenticatedGetHandler } from '../lib/handler-factories';
+import { createNotesDbClient } from '../lib/notes-db-client';
 
 /**
  * Get Notes Handler
  * Returns all notes for the authenticated user (private notes only)
+ * 
+ * Uses functional composition with curried handler factory and shared DB client
  */
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  console.log('Get notes event:', JSON.stringify(event, null, 2));
+export const handler = createAuthenticatedGetHandler(async (event, env) => {
+  // Create notes DB client for this table
+  const notesDb = createNotesDbClient(env.TABLE_NAME);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+  // Query user's notes (username is extracted from JWT by the schema)
+  const notes = await notesDb.getUserNotes(event.username);
+
+  // Map to response format
+  const formattedNotes = notes.map((item) => ({
+    noteId: item.noteId,
+    content: item.content,
+    isPublic: item.isPublic,
+    status: item.status,
+    createdAt: item.createdAt,
+    savedAt: item.savedAt,
+  }));
+
+  return {
+    statusCode: 200,
+    body: {
+      notes: formattedNotes,
+      count: formattedNotes.length,
+    },
   };
-
-  try {
-    // Extract JWT token from Authorization header
-    const authHeader = event.headers?.authorization || event.headers?.Authorization;
-    if (!authHeader) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ message: 'Unauthorized: No token provided' }),
-      };
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Decode JWT to get username
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    const username = payload.username;
-
-    if (!username) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ message: 'Unauthorized: Invalid token' }),
-      };
-    }
-
-    // Query user's notes from DynamoDB
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${username}`,
-          ':sk': 'NOTE#',
-        },
-        ScanIndexForward: false, // Sort by newest first
-      })
-    );
-
-    const notes = (result.Items || []).map((item) => ({
-      noteId: item.noteId,
-      content: item.content,
-      isPublic: item.isPublic,
-      status: item.status,
-      createdAt: item.createdAt,
-      savedAt: item.savedAt,
-    }));
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        notes,
-        count: notes.length,
-      }),
-    };
-  } catch (error) {
-    console.error('Error in get notes handler:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ message: 'Internal server error' }),
-    };
-  }
-};
+});

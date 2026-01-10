@@ -1,5 +1,5 @@
 import { hashPassword } from '../utils/crypto';
-import { createAuthHandler } from '../lib/composition-examples';
+import { createAuthHandler } from '../lib/handler-factories';
 import { createUserDbClient } from '../lib/db-client';
 
 /**

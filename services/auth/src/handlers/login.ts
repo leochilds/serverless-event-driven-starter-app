@@ -1,6 +1,6 @@
 import { verifyPassword } from '../utils/crypto';
 import { generateToken } from '../utils/jwt';
-import { createAuthHandler } from '../lib/composition-examples';
+import { createAuthHandler } from '../lib/handler-factories';
 import { createUserDbClient, withValidation } from '../lib/db-client';
 import { userRecordSchema } from '../lib/schemas';
 

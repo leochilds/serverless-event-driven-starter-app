@@ -1,5 +1,5 @@
 import { verifyToken } from '../utils/jwt';
-import { createGetHandler } from '../lib/lambda-factory';
+import { createGetHandler } from '@shared/lambda-factory';
 import { authEnvSchema, authenticatedGetEventSchema, userRecordSchema } from '../lib/schemas';
 import { createUserDbClient, withValidation } from '../lib/db-client';
 
