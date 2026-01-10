@@ -71,6 +71,7 @@
     "environment": "production",
     "domainName": "leochilds.uk",
     "apiDomainName": "api.leochilds.uk",
+    "wsDomainName": "ws.leochilds.uk",
     "primaryRegion": "eu-west-2",
     "certificateRegion": "us-east-1",
     "allowedOrigin": "https://leochilds.uk"
