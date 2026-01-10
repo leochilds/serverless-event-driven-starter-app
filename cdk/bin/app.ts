@@ -16,6 +16,7 @@ const app = new cdk.App();
 const environment = app.node.tryGetContext('environment') || 'production';
 const domainName = app.node.tryGetContext('domainName');
 const apiDomainName = app.node.tryGetContext('apiDomainName');
+const wsDomainName = app.node.tryGetContext('wsDomainName');
 const allowedOrigin = app.node.tryGetContext('allowedOrigin');
 const primaryRegion = app.node.tryGetContext('primaryRegion') || 'eu-west-2';
 const certificateRegion = app.node.tryGetContext('certificateRegion') || 'us-east-1';
@@ -45,6 +46,7 @@ const dnsStack = new DnsStack(app, 'DNSStack', {
   },
   domainName,
   apiDomainName,
+  wsDomainName,
 });
 
 // Data Stack - DynamoDB table
@@ -108,14 +110,19 @@ const webSocketStack = new WebSocketStack(app, 'WebSocketStack', {
   env: envConfig,
   stackName: `${environment}-websocket-stack`,
   description: 'WebSocket Stack for real-time notifications',
+  crossRegionReferences: true,
   tags: {
     Environment: environment,
   },
   environment,
   eventBus: eventStack.eventBus,
+  wsDomainName,
+  wsCertificate: dnsStack.wsCertificate,
+  hostedZone: dnsStack.hostedZone,
 });
 
 webSocketStack.addDependency(eventStack);
+webSocketStack.addDependency(dnsStack);
 
 // Notes Stack - Notes service with event-driven handlers
 const notesStack = new NotesStack(app, 'NotesStack', {

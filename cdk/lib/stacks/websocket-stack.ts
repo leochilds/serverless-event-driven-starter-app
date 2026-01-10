@@ -8,11 +8,17 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 interface WebSocketStackProps extends cdk.StackProps {
   environment: string;
   eventBus: events.EventBus;
+  wsDomainName: string;
+  wsCertificate: acm.ICertificate;
+  hostedZone: route53.IHostedZone;
 }
 
 export class WebSocketStack extends cdk.Stack {
@@ -23,7 +29,7 @@ export class WebSocketStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: WebSocketStackProps) {
     super(scope, id, props);
 
-    const { environment, eventBus } = props;
+    const { environment, eventBus, wsDomainName, wsCertificate, hostedZone } = props;
 
     // Create DynamoDB table for WebSocket connections
     this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
@@ -123,8 +129,33 @@ export class WebSocketStack extends cdk.Stack {
       autoDeploy: true,
     });
 
-    // Store WebSocket URL for use in notify function
-    this.webSocketUrl = webSocketStage.url;
+    // Create custom domain name for WebSocket API
+    const domainName = new apigatewayv2.DomainName(this, 'WebSocketDomainName', {
+      domainName: wsDomainName,
+      certificate: wsCertificate,
+    });
+
+    // Map the custom domain to the WebSocket stage
+    new apigatewayv2.ApiMapping(this, 'WebSocketApiMapping', {
+      api: this.webSocketApi,
+      domainName: domainName,
+      stage: webSocketStage,
+    });
+
+    // Create Route53 A record for the custom domain
+    new route53.ARecord(this, 'WebSocketAliasRecord', {
+      zone: hostedZone,
+      recordName: wsDomainName,
+      target: route53.RecordTarget.fromAlias(
+        new route53Targets.ApiGatewayv2DomainProperties(
+          domainName.regionalDomainName,
+          domainName.regionalHostedZoneId
+        )
+      ),
+    });
+
+    // Store WebSocket URL for use in notify function (use custom domain)
+    this.webSocketUrl = `wss://${wsDomainName}/${environment}`;
 
     // Update notify function environment with WebSocket API details
     notifyFunction.addEnvironment('WEBSOCKET_API_ENDPOINT', this.webSocketApi.apiEndpoint);

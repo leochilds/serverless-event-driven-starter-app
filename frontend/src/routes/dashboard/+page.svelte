@@ -4,7 +4,7 @@
   import { NotesWebSocket } from '$lib/websocket';
   
   const API_URL = 'https://api.leochilds.uk';
-  const WS_URL = 'wss://REPLACE_WITH_YOUR_WEBSOCKET_URL/production'; // Update after deployment
+  const WS_URL = 'wss://ws.leochilds.uk/production';
   
   let loading = true;
   let error = '';
