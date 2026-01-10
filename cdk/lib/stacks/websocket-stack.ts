@@ -17,7 +17,6 @@ interface WebSocketStackProps extends cdk.StackProps {
   environment: string;
   eventBus: events.EventBus;
   wsDomainName: string;
-  wsCertificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
 }
 
@@ -29,7 +28,13 @@ export class WebSocketStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: WebSocketStackProps) {
     super(scope, id, props);
 
-    const { environment, eventBus, wsDomainName, wsCertificate, hostedZone } = props;
+    const { environment, eventBus, wsDomainName, hostedZone } = props;
+
+    // Create SSL/TLS certificate for WebSocket API (must be in same region as API)
+    const wsCertificate = new acm.Certificate(this, 'WebSocketCertificate', {
+      domainName: wsDomainName,
+      validation: acm.CertificateValidation.fromDns(hostedZone),
+    });
 
     // Create DynamoDB table for WebSocket connections
     this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {

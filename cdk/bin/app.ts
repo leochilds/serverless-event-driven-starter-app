@@ -46,7 +46,6 @@ const dnsStack = new DnsStack(app, 'DNSStack', {
   },
   domainName,
   apiDomainName,
-  wsDomainName,
 });
 
 // Data Stack - DynamoDB table
@@ -117,7 +116,6 @@ const webSocketStack = new WebSocketStack(app, 'WebSocketStack', {
   environment,
   eventBus: eventStack.eventBus,
   wsDomainName,
-  wsCertificate: dnsStack.wsCertificate,
   hostedZone: dnsStack.hostedZone,
 });
 
