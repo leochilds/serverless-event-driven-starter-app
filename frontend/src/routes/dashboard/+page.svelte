@@ -8,13 +8,13 @@
   
   let loading = true;
   let error = '';
-  let userData: any = null;
+  let userData = null;
   let token = '';
   let username = '';
   
   // Notes state
-  let notes: any[] = [];
-  let publicNotes: any[] = [];
+  let notes = [];
+  let publicNotes = [];
   let noteContent = '';
   let isPublic = false;
   let submitting = false;
@@ -22,7 +22,7 @@
   let noteSuccess = '';
   
   // WebSocket state
-  let wsClient: NotesWebSocket | null = null;
+  let wsClient = null;
   let wsStatus = 'disconnected';
   let wsError = '';
 
@@ -68,7 +68,7 @@
       }
 
       userData = data;
-    } catch (err: any) {
+    } catch (err) {
       error = err.message;
       if (err.message.includes('Invalid') || err.message.includes('expired')) {
         localStorage.removeItem('token');
@@ -94,7 +94,7 @@
       if (response.ok) {
         notes = data.notes || [];
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching notes:', err);
     }
   }
@@ -112,7 +112,7 @@
       if (response.ok) {
         publicNotes = data.notes || [];
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching public notes:', err);
     }
   }
@@ -160,7 +160,7 @@
 
       await wsClient.connect();
       wsStatus = 'connected';
-    } catch (err: any) {
+    } catch (err) {
       console.error('WebSocket connection error:', err);
       wsError = 'Failed to connect to real-time updates';
       wsStatus = 'error';
@@ -202,14 +202,14 @@
       
       // Show pending message
       noteSuccess = 'Note submitted! Processing...';
-    } catch (err: any) {
+    } catch (err) {
       noteError = err.message;
     } finally {
       submitting = false;
     }
   }
 
-  async function deleteNote(noteId: string) {
+  async function deleteNote(noteId) {
     if (!confirm('Are you sure you want to delete this note?')) {
       return;
     }
@@ -229,7 +229,7 @@
       }
 
       // Note will be removed via WebSocket event
-    } catch (err: any) {
+    } catch (err) {
       noteError = err.message;
     }
   }
@@ -243,7 +243,7 @@
     goto('/login');
   }
 
-  function getStatusColor(status: string) {
+  function getStatusColor(status) {
     switch (status) {
       case 'connected': return 'green';
       case 'connecting': return 'orange';
