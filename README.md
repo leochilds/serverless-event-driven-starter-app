@@ -9,7 +9,9 @@ This starter application demonstrates a modern serverless architecture with:
 - **Frontend**: SvelteKit static site hosted on S3 + CloudFront
 - **Backend**: AWS Lambda functions with API Gateway
 - **Database**: DynamoDB (single-table design)
-- **Authentication**: JWT-based auth with bcrypt password hashing
+- **Authentication**: JWT-based auth with scrypt password hashing
+- **Event-Driven**: EventBridge + SQS + WebSockets for async processing
+- **Real-time**: WebSocket API for instant notifications
 - **Infrastructure**: AWS CDK for infrastructure as code
 - **Multi-Region**: Supports resources across multiple AWS regions
 
@@ -23,34 +25,49 @@ This starter application demonstrates a modern serverless architecture with:
 │   │   ├── dns-stack.ts         # Route53 + ACM certificates
 │   │   ├── data-stack.ts        # DynamoDB table
 │   │   ├── auth-stack.ts        # Lambda + API Gateway
+│   │   ├── event-stack.ts       # EventBridge + SQS (NEW)
+│   │   ├── websocket-stack.ts   # WebSocket API (NEW)
+│   │   ├── notes-stack.ts       # Notes service (NEW)
 │   │   └── frontend-stack.ts    # S3 + CloudFront
 │   └── package.json
 │
 ├── services/
-│   └── auth/                     # Authentication Service
-│       ├── src/
-│       │   ├── handlers/        # Lambda function handlers
-│       │   │   ├── signup.ts
-│       │   │   ├── login.ts
-│       │   │   └── get-user.ts
-│       │   └── utils/           # Shared utilities
-│       │       ├── crypto.ts    # Password hashing
-│       │       └── jwt.ts       # JWT token management
+│   ├── auth/                     # Authentication Service
+│   │   ├── src/handlers/        # Lambda function handlers
+│   │   │   ├── signup.ts
+│   │   │   ├── login.ts
+│   │   │   └── get-user.ts
+│   │   └── package.json
+│   ├── notes/                    # Notes Service (NEW)
+│   │   ├── src/handlers/
+│   │   │   ├── publish-note.ts  # Publish to EventBridge
+│   │   │   ├── save-note.ts     # Save from SQS
+│   │   │   ├── get-notes.ts
+│   │   │   ├── get-public-notes.ts
+│   │   │   ├── update-note.ts
+│   │   │   └── delete-note.ts
+│   │   └── package.json
+│   └── websocket/                # WebSocket Service (NEW)
+│       ├── src/handlers/
+│       │   ├── connect.ts       # Handle connections
+│       │   ├── disconnect.ts    # Handle disconnections
+│       │   └── notify.ts        # Send real-time updates
 │       └── package.json
 │
 ├── frontend/                     # SvelteKit Frontend
 │   ├── src/
-│   │   ├── routes/
-│   │   │   ├── +page.svelte           # Home page
-│   │   │   ├── signup/+page.svelte    # Sign up
-│   │   │   ├── login/+page.svelte     # Login
-│   │   │   └── dashboard/+page.svelte # Dashboard
-│   │   ├── app.html
-│   │   └── app.css
+│   │   ├── lib/
+│   │   │   └── websocket.ts     # WebSocket client (NEW)
+│   │   └── routes/
+│   │       ├── +page.svelte           # Home page
+│   │       ├── signup/+page.svelte    # Sign up
+│   │       ├── login/+page.svelte     # Login
+│   │       └── dashboard/+page.svelte # Dashboard with notes (UPDATED)
 │   └── package.json
 │
 ├── package.json                  # Root workspace config
 ├── DEPLOYMENT.md                # Deployment guide
+├── EVENT_DRIVEN.md              # Event-driven architecture guide (NEW)
 └── README.md                    # This file
 ```
 
@@ -77,7 +94,25 @@ This starter application demonstrates a modern serverless architecture with:
 - JWT token generation and validation
 - CORS enabled for frontend integration
 
-#### 4. Frontend Stack
+#### 4. Event Stack (Event-Driven Architecture)
+- EventBridge event bus for event routing
+- SQS queue with Dead Letter Queue for reliable processing
+- Event rules for routing events to consumers
+- Decoupled, scalable architecture
+
+#### 5. WebSocket Stack (Real-time Updates)
+- API Gateway WebSocket API
+- Connection management with DynamoDB
+- Real-time notifications to connected clients
+- Auto-cleanup of stale connections
+
+#### 6. Notes Stack (Event-Driven Service)
+- Six Lambda functions for notes CRUD + event processing
+- Async pattern: HTTP request → EventBridge → SQS → Lambda
+- WebSocket notifications when operations complete
+- Public and private notes support
+
+#### 7. Frontend Stack
 - S3 bucket for static website hosting
 - CloudFront distribution with custom domain
 - Origin Access Control (OAC) for secure S3 access
@@ -101,6 +136,9 @@ This starter application demonstrates a modern serverless architecture with:
 - ✅ JWT token storage (localStorage)
 - ✅ Automatic token validation
 - ✅ Logout functionality
+- ✅ **Notes creation with public/private visibility** (NEW)
+- ✅ **Real-time WebSocket updates** (NEW)
+- ✅ **Event-driven async processing** (NEW)
 - ✅ Responsive design with clean UI
 
 ## 🛠️ Technology Stack
@@ -222,22 +260,68 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ### Single-Table DynamoDB Design
 
-Users are stored with the following pattern:
+All data is stored in a single table for efficiency:
+
+**Users:**
 ```
 pk: "USER#{username}"
 sk: "PROFILE"
 attributes: { username, passwordHash, createdAt }
 ```
 
-This allows for efficient queries and follows single-table design best practices.
+**Notes (Private):**
+```
+pk: "USER#{username}"
+sk: "NOTE#{timestamp}#{noteId}"
+attributes: { noteId, content, isPublic: false, status, createdAt, savedAt }
+```
+
+**Notes (Public):**
+```
+pk: "PUBLIC#NOTES"
+sk: "NOTE#{timestamp}#{noteId}"
+attributes: { noteId, username, content, isPublic: true, status, createdAt, savedAt }
+```
+
+**WebSocket Connections:**
+```
+pk: "CONNECTION#{connectionId}" or "USER#{username}"
+sk: "META" or "CONNECTION#{connectionId}"
+attributes: { connectionId, username, connectedAt, ttl }
+```
+
+This single-table design allows for efficient queries and follows DynamoDB best practices.
 
 ### Event-Driven Architecture
 
-While this starter demonstrates basic CRUD operations, the architecture is designed to be extended with:
-- EventBridge for event routing
-- SQS for async processing
-- Step Functions for orchestration
-- Additional Lambda functions as event handlers
+This application demonstrates both **synchronous** and **asynchronous** patterns:
+
+#### Synchronous Pattern (Auth)
+```
+User → API Gateway → Lambda → DynamoDB → Response
+```
+- Used for operations requiring immediate response
+- Simple, guaranteed response
+- Used for authentication where we need token immediately
+
+#### Asynchronous Pattern (Notes)
+```
+User → API Gateway → Lambda → EventBridge → SQS → Lambda → DynamoDB
+                                    ↓
+                              WebSocket ← Lambda (notify)
+```
+- Used for operations that can be processed asynchronously
+- Highly scalable, decoupled, resilient
+- Returns immediately (202 Accepted)
+- WebSocket provides real-time feedback when complete
+
+**See [EVENT_DRIVEN.md](./EVENT_DRIVEN.md) for detailed architecture guide**
+
+#### Key Components
+- **EventBridge**: Central event router for decoupled services
+- **SQS**: Message queue for reliable async processing with DLQ
+- **WebSocket API**: Real-time bidirectional communication
+- **Lambda**: Event-driven functions triggered by SQS and EventBridge
 
 ### Multi-Environment Support
 
@@ -275,11 +359,28 @@ This starter is optimized for minimal AWS costs:
 
 ## 📚 API Endpoints
 
+### Authentication (Synchronous)
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | POST | `/auth/signup` | Create new user account | No |
 | POST | `/auth/login` | Authenticate user, get JWT | No |
 | GET | `/auth/user` | Get user profile data | Yes (JWT) |
+
+### Notes (Asynchronous Event-Driven)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/notes` | Create note (async) | Yes (JWT) |
+| GET | `/notes` | Get user's notes | Yes (JWT) |
+| GET | `/notes/public` | Get all public notes | No |
+| PUT | `/notes/{noteId}` | Update note | Yes (JWT) |
+| DELETE | `/notes/{noteId}` | Delete note | Yes (JWT) |
+
+### WebSocket (Real-time)
+| Route | Description | Auth Required |
+|-------|-------------|---------------|
+| `$connect` | Establish WebSocket connection | Yes (token in query) |
+| `$disconnect` | Close WebSocket connection | N/A |
+| Real-time events | Receive note-saved, note-failed, etc. | N/A |
 
 ## 🧪 Testing
 

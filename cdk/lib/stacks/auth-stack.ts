@@ -20,6 +20,8 @@ interface AuthStackProps extends cdk.StackProps {
 }
 
 export class AuthStack extends cdk.Stack {
+  public readonly httpApi: apigatewayv2.HttpApi;
+
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
@@ -94,7 +96,7 @@ export class AuthStack extends cdk.Stack {
     jwtSecret.grantRead(getUserFunction);
 
     // Create HTTP API
-    const httpApi = new apigatewayv2.HttpApi(this, 'AuthApi', {
+    this.httpApi = new apigatewayv2.HttpApi(this, 'AuthApi', {
       apiName: `${environment}-auth-api`,
       description: 'Authentication API',
       corsPreflight: {
@@ -116,9 +118,9 @@ export class AuthStack extends cdk.Stack {
 
     // Map custom domain to API
     new apigatewayv2.ApiMapping(this, 'ApiMapping', {
-      api: httpApi,
+      api: this.httpApi,
       domainName: domainName,
-      stage: httpApi.defaultStage,
+      stage: this.httpApi.defaultStage,
     });
 
     // Create Route53 record for API
@@ -134,7 +136,7 @@ export class AuthStack extends cdk.Stack {
     });
 
     // Add routes
-    httpApi.addRoutes({
+    this.httpApi.addRoutes({
       path: '/auth/signup',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -143,7 +145,7 @@ export class AuthStack extends cdk.Stack {
       ),
     });
 
-    httpApi.addRoutes({
+    this.httpApi.addRoutes({
       path: '/auth/login',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -152,7 +154,7 @@ export class AuthStack extends cdk.Stack {
       ),
     });
 
-    httpApi.addRoutes({
+    this.httpApi.addRoutes({
       path: '/auth/user',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration(
@@ -163,7 +165,7 @@ export class AuthStack extends cdk.Stack {
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: httpApi.url!,
+      value: this.httpApi.url!,
       description: 'API Gateway URL',
     });
 
