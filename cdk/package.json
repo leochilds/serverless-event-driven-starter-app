@@ -1,0 +1,27 @@
+{
+  "name": "cdk",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --all --require-approval never",
+    "deploy:dns": "cdk deploy DNSStack",
+    "deploy:data": "cdk deploy DataStack",
+    "deploy:auth": "cdk deploy AuthStack",
+    "deploy:frontend": "cdk deploy FrontendStack",
+    "destroy": "cdk destroy --all",
+    "synth": "cdk synth"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "aws-cdk": "^2.120.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.120.0",
+    "constructs": "^10.3.0"
+  }
+}
