@@ -26,7 +26,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     try {
       // Parse EventBridge event from SQS message
       const eventBridgeEvent = JSON.parse(record.body);
-      const noteEvent: NoteCreatedEvent = JSON.parse(eventBridgeEvent.detail);
+      const noteEvent: NoteCreatedEvent = eventBridgeEvent.detail;
 
       console.log('Processing note:', noteEvent.noteId);
 
@@ -83,7 +83,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       // Try to publish note-failed event
       try {
         const eventBridgeEvent = JSON.parse(record.body);
-        const noteEvent: NoteCreatedEvent = JSON.parse(eventBridgeEvent.detail);
+        const noteEvent: NoteCreatedEvent = eventBridgeEvent.detail;
 
         await eventClient.publishEvent({
           eventType: 'note-failed',

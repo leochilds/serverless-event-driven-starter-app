@@ -60,7 +60,8 @@ export const handler = async (event: EventBridgeEvent<string, NoteEvent>) => {
     console.log(`Found ${connections.length} connection(s) for user ${username}`);
 
     // Create API Gateway Management client
-    const endpoint = `${WEBSOCKET_API_ENDPOINT}/${WEBSOCKET_STAGE}`;
+    // Convert wss:// to https:// for management API
+    const endpoint = `${WEBSOCKET_API_ENDPOINT.replace('wss://', 'https://')}/${WEBSOCKET_STAGE}`;
     const apiGatewayClient = new ApiGatewayManagementApiClient({
       endpoint: endpoint,
     });

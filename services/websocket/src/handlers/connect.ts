@@ -27,16 +27,36 @@ export const handler = async (event: APIGatewayProxyWebsocketEventV2) => {
   }
 
   try {
-    // Decode JWT to get username (basic decode without verification for demo)
-    // In production, you should verify the JWT signature
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-    const username = payload.username;
-
-    if (!username) {
-      console.error('No username in token');
+    // Validate JWT format (should have 3 parts: header.payload.signature)
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.error('Invalid token format - expected JWT with 3 parts');
       return {
         statusCode: 401,
-        body: JSON.stringify({ message: 'Unauthorized: Invalid token' }),
+        body: JSON.stringify({ message: 'Unauthorized: Invalid token format' }),
+      };
+    }
+
+    // Decode JWT to get username (basic decode without verification for demo)
+    // In production, you should verify the JWT signature
+    let payload;
+    try {
+      payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+    } catch (decodeError) {
+      console.error('Failed to decode token:', decodeError);
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: 'Unauthorized: Malformed token' }),
+      };
+    }
+
+    const username = payload?.username;
+
+    if (!username) {
+      console.error('No username in token payload');
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ message: 'Unauthorized: Invalid token payload' }),
       };
     }
 
