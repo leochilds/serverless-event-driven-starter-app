@@ -70,7 +70,7 @@ jobs:
           fi
           
           echo "Syncing files to s3://$BUCKET_NAME/"
-          aws s3 sync frontend/.svelte-kit/output/client/ "s3://$BUCKET_NAME/" --delete --region eu-west-2
+          aws s3 sync frontend/build/ "s3://$BUCKET_NAME/" --delete --region eu-west-2
           
           echo "Frontend deployed successfully to S3"
       
