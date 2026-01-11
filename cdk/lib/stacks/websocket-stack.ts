@@ -160,7 +160,7 @@ export class WebSocketStack extends cdk.Stack {
     });
 
     // Store WebSocket URL for use in notify function (use custom domain)
-    this.webSocketUrl = `wss://${wsDomainName}/${environment}`;
+    this.webSocketUrl = `wss://${wsDomainName}`;
 
     // Update notify function environment with WebSocket API details
     notifyFunction.addEnvironment('WEBSOCKET_API_ENDPOINT', this.webSocketApi.apiEndpoint);
