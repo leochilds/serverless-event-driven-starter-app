@@ -33,21 +33,11 @@ export class FrontendStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
-    // Create CloudFront Origin Access Control
-    const oac = new cloudfront.CfnOriginAccessControl(this, 'OAC', {
-      originAccessControlConfig: {
-        name: `${environment}-frontend-oac`,
-        originAccessControlOriginType: 's3',
-        signingBehavior: 'always',
-        signingProtocol: 'sigv4',
-      },
-    });
-
     // Create CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, 'FrontendDistribution', {
       comment: `${environment} Frontend Distribution`,
       defaultBehavior: {
-        origin: new cloudfront_origins.S3Origin(this.bucket),
+        origin: cloudfront_origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
