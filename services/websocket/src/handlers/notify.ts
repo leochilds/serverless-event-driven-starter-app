@@ -19,6 +19,7 @@ interface NoteEvent {
   noteId: string;
   username: string;
   content?: string;
+  isPublic?: boolean;
   error?: string;
   savedAt?: string;
   updatedAt?: string;
@@ -36,28 +37,52 @@ export const handler = async (event: EventBridgeEvent<string, NoteEvent>) => {
 
   const noteEvent = event.detail;
   const username = noteEvent.username;
+  const isPublic = noteEvent.isPublic || false;
 
   try {
-    // Get all connections for this user
-    const queryResult = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${username}`,
-          ':sk': 'CONNECTION#',
-        },
-      })
-    );
+    let connections: any[] = [];
 
-    const connections = queryResult.Items || [];
+    if (isPublic && (noteEvent.eventType === 'note-saved' || noteEvent.eventType === 'note-updated' || noteEvent.eventType === 'note-deleted')) {
+      // For public notes, get ALL active connections to broadcast to everyone
+      console.log('Broadcasting public note event to all connected users');
+      
+      // Query all CONNECTION# records (these represent all active connections)
+      const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+      const scanResult = await docClient.send(
+        new ScanCommand({
+          TableName: TABLE_NAME,
+          FilterExpression: 'begins_with(pk, :prefix)',
+          ExpressionAttributeValues: {
+            ':prefix': 'CONNECTION#',
+          },
+        })
+      );
+      
+      connections = scanResult.Items || [];
+    } else {
+      // For private notes or failures, only notify the note author
+      console.log(`Notifying user ${username} about their note`);
+      
+      const queryResult = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'pk = :pk AND begins_with(sk, :sk)',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${username}`,
+            ':sk': 'CONNECTION#',
+          },
+        })
+      );
+      
+      connections = queryResult.Items || [];
+    }
 
     if (connections.length === 0) {
-      console.log(`No active connections found for user ${username}`);
+      console.log(`No active connections found`);
       return;
     }
 
-    console.log(`Found ${connections.length} connection(s) for user ${username}`);
+    console.log(`Found ${connections.length} connection(s) to notify`);
 
     // Create API Gateway Management client
     // Convert wss:// to https:// for management API

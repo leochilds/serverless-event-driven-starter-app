@@ -37,6 +37,7 @@ export const handler = createUpdateNoteHandler(async (event, env, body) => {
     noteId,
     username: event.username,
     content: body.content,
+    isPublic: noteData.isPublic,
     updatedAt,
     timestamp: updatedAt,
   });

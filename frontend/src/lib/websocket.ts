@@ -8,6 +8,7 @@ type NoteEvent = {
   noteId: string;
   username: string;
   content?: string;
+  isPublic?: boolean;
   error?: string;
   savedAt?: string;
   updatedAt?: string;

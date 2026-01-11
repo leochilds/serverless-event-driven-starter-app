@@ -44,6 +44,7 @@ export const handler = createDeleteNoteHandler(async (event, env) => {
     eventType: 'note-deleted',
     noteId,
     username: event.username,
+    isPublic: isPublic,
     deletedAt,
     timestamp: deletedAt,
   });

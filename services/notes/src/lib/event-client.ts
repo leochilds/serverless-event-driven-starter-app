@@ -53,6 +53,7 @@ export interface NoteSavedEvent extends BaseNoteEvent {
 export interface NoteUpdatedEvent extends BaseNoteEvent {
   eventType: 'note-updated';
   content: string;
+  isPublic?: boolean;
   updatedAt: string;
 }
 
@@ -61,6 +62,7 @@ export interface NoteUpdatedEvent extends BaseNoteEvent {
  */
 export interface NoteDeletedEvent extends BaseNoteEvent {
   eventType: 'note-deleted';
+  isPublic?: boolean;
   deletedAt: string;
 }
 
