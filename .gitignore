@@ -11,9 +11,17 @@ cdk/cdk.context.json
 # Build outputs
 dist/
 build/
-*.js
-*.d.ts
-*.js.map
+
+# Compiled TypeScript outputs (specific to service/CDK directories)
+/services/**/*.js
+/services/**/*.d.ts
+/services/**/*.js.map
+/cdk/lib/**/*.js
+/cdk/lib/**/*.d.ts
+/cdk/lib/**/*.js.map
+/cdk/bin/**/*.js
+/cdk/bin/**/*.d.ts
+/cdk/bin/**/*.js.map
 
 # Frontend
 frontend/.svelte-kit/
