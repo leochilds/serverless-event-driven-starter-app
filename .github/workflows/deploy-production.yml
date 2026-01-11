@@ -45,6 +45,10 @@ jobs:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: eu-west-2
       
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install
+      
       - name: Build Frontend
         working-directory: ./frontend
         run: |
